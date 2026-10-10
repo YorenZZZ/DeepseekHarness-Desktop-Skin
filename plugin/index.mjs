@@ -50,7 +50,7 @@ export function createHandler(report=()=>{},configFile=join(root,'..','config.js
 }
 export const inject=['webServer'];
 export function apply(ctx){
-  const status={pluginVersion:'1.1.0',pid:process.pid,hostStartedAt:new Date().toISOString(),events:{}};
+  const status={pluginVersion:'1.2.0',pid:process.pid,hostStartedAt:new Date().toISOString(),events:{}};
   const record=event=>{
     if(event)status.events[event]=new Date().toISOString();
     try{writeFileSync(join(root,'..','health.json'),JSON.stringify(status,null,2)+'\n',{mode:0o600});}catch(error){console.warn('Animation health log unavailable:',error.message);}
