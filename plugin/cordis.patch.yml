@@ -1,0 +1,6 @@
+- insert:
+    - id: yoren-animations
+      name: '@yoren/dsh-animations'
+- id: ui-theme
+  config:
+    preference: dark

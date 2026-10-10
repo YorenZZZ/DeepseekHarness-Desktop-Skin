@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+# Written by the plugin and tests at the repository root; per-machine only.
+health.json
+config.json
+# The full authoring archive (raw clips, original art, render tools) stays local.
+archive/

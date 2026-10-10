@@ -1,0 +1,20 @@
+{
+  "name": "@yoren/dsh-animations",
+  "version": "1.0.0",
+  "description": "DeepSeek Harness 桌面版皮肤：入场动画与首页动态骑士背景（macOS）",
+  "author": "YorenZZZ",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

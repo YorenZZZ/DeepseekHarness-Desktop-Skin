@@ -1,0 +1,122 @@
+/* 3D silver-knight backdrop for the new-session page (HeroKnight.ya-tsx plays
+   the clips). Stack, back to front: page-colour stage → aura glow → the
+   framed poster and two crossfading clips → drifting motes → a scrim behind
+   the headline and composer so they stay legible. The frame blends with
+   `lighten` over the page colour, so the clips' near-black backdrop melts
+   into the page and leaves no rectangle. */
+
+.ya-stage {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  isolation: isolate;
+  background: var(--dsw-alias-bg-base);
+}
+
+.ya-aura {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(ellipse 30% 40% at 50% 38%, rgb(94 234 212 / 0.07), transparent 72%),
+    radial-gradient(ellipse 22% 18% at 50% 22%, rgb(244 114 182 / 0.05), transparent 70%);
+  animation: knight-aura 8s ease-in-out infinite;
+}
+
+.ya-frame {
+  position: absolute;
+  inset: 0;
+  opacity: 0.86;
+  mix-blend-mode: lighten;
+}
+
+.ya-poster,
+.ya-sigil,
+.ya-clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 50%;
+}
+
+/* The fingertip mask is only a drawing source for the sigil canvas. */
+.ya-hand {
+  display: none;
+}
+
+/* The incoming clip fades in above; the outgoing one hides only after. */
+.ya-clip {
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease 0.3s;
+}
+
+.ya-clip[data-front] {
+  z-index: 2;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.ya-stage:not([data-playing]) .ya-clip {
+  visibility: hidden;
+}
+
+.ya-motes {
+  position: absolute;
+  inset: 0;
+}
+
+.ya-mote {
+  position: absolute;
+  bottom: -10px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: rgb(103 232 249);
+  box-shadow: 0 0 8px 2px rgb(34 211 238 / 0.45);
+  opacity: 0;
+  animation: knight-mote var(--mote-dur) linear var(--mote-delay) infinite;
+}
+
+.ya-rose {
+  background: rgb(253 164 175);
+  box-shadow: 0 0 12px 4px rgb(244 114 182 / 0.35);
+  filter: blur(1px);
+}
+
+.ya-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 44% 24% at 50% 62%, rgb(12 13 18 / 0.45), transparent 100%),
+    radial-gradient(ellipse 100% 100% at 50% 45%, transparent 60%, rgb(12 13 18 / 0.35) 100%);
+}
+
+@keyframes knight-aura {
+  0%,
+  100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes knight-mote {
+  0% { opacity: 0; transform: translate3d(0, 0, 0); }
+  10% { opacity: 0.8; }
+  80% { opacity: 0.5; }
+  100% { opacity: 0; transform: translate3d(28px, -92vh, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ya-aura {
+    animation: none;
+  }
+
+  .ya-mote {
+    display: none;
+  }
+}
+
+[data-yoren-hero]{isolation:isolate;position:relative}
+[data-yoren-hero]>.ya-stage{background:var(--dsw-alias-bg-base,#141416)}

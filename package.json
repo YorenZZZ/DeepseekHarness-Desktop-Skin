@@ -1,0 +1,16 @@
+{
+  "name": "deepseekharness-desktop-skin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DeepSeek Harness 桌面版皮肤（macOS）：入场动画与首页动态骑士背景",
+  "author": "YorenZZZ",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "node scripts/build-client.mjs",
+    "test": "node --test"
+  }
+}
