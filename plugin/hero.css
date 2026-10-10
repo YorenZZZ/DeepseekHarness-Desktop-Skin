@@ -48,11 +48,13 @@
   display: none;
 }
 
-/* The incoming clip fades in above; the outgoing one hides only after. */
+/* The incoming clip fades in above (BLEND in client.js); the outgoing one,
+   holding the matching pose, hides only after. Linear, so the blend has no
+   sudden middle. */
 .ya-clip {
   z-index: 1;
   opacity: 0;
-  transition: opacity 0.3s ease 0.3s;
+  transition: opacity 0.2s linear 0.2s;
 }
 
 .ya-clip[data-front] {

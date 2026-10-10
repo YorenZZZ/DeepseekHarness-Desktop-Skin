@@ -68,7 +68,7 @@ if(!matches('(prefers-reduced-motion: reduce)')){
 }
 sync();telemetry('client-ready');
 const compatibilityTimer=setTimeout(()=>{if(!heroSeen&&!document.querySelector('[data-conversation-content]'))telemetry('selector-unavailable');},30000);
-window.__YOREN_ANIMATIONS__={version:'1.0.0',get mounted(){return mounted.size;},dispose(){
+window.__YOREN_ANIMATIONS__={version:'1.0.1',get mounted(){return mounted.size;},dispose(){
   removeSplash();disposed=true;clearTimeout(compatibilityTimer);observer.disconnect();
   window.removeEventListener('message',receive);window.removeEventListener('keydown',key);
   for(const stop of mounted.values())stop();mounted.clear();

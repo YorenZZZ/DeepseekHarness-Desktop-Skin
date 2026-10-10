@@ -4,9 +4,12 @@
  * redrawn as a 3D render, alive through short generated clips that all start
  * and end on the same frame (the poster). She idles — breathing, hair, scarf
  * and whale tail in the wind, the palm sigil turning — and every couple of
- * loops plays one move: a head tilt and wink, leaning in with a heavy-lidded
- * smile, or a hair toss as her sigil flares. Two video elements double-buffer
- * so a clip change is a short crossfade between matching frames. The clips
+ * loops plays one move: a narrowed, glowing glare, a turn of the sword as its
+ * edge flares, or a surge of the sigil lifting her hair and scarf (the files
+ * keep their first names: wink, lean, toss). Two video elements double-buffer;
+ * the next clip waits cued on its first used frame and takes over, timed to
+ * the presented frame, just as the current one reaches its last, with a brief
+ * blend over the matching pose. The clips
  * come from the host route the package registers (`/hero-knight/`); until
  * they load, or without them, the poster stands in, and the sigil in her left
  * palm is drawn live: a vector disc in the tilted plane of her palm whose
@@ -17,10 +20,30 @@
  */
 
 const MEDIA = '/yoren-animations/media/'
-const IDLE = 'idle.mp4'
-const MOVES = ['wink.mp4', 'lean.mp4', 'toss.mp4'] as const
-/** Seconds before a clip ends when the next one starts fading in. */
-const CROSSFADE = 0.3
+const FPS = 24
+/**
+ * The frames of each clip that play, measured on the shipped encodes. Every
+ * clip opens and closes on the poster pose, so a clip's first frame repeats
+ * the previous clip's last and is skipped. The sword and surge clips settle
+ * early and then stand frozen for most of a second, which reads as a stall
+ * before the idle moves again, so they hand over where the freeze begins; the
+ * sword clip also opens on four still frames.
+ */
+const CLIPS = {
+  'idle.mp4': { from: 1, to: 144 },
+  'wink.mp4': { from: 1, to: 120 },
+  'lean.mp4': { from: 4, to: 98 },
+  'toss.mp4': { from: 1, to: 125 },
+} as const
+type Clip = keyof typeof CLIPS
+const IDLE: Clip = 'idle.mp4'
+const MOVES: readonly Clip[] = ['wink.mp4', 'lean.mp4', 'toss.mp4']
+/** Frames before a clip's last used frame when the next one is started, to
+ * cover the time `play()` takes to get going. */
+const LEAD = 2
+/** Seconds the incoming clip takes to fade in (hero.css). The outgoing element
+ * is reused only after it has faded out underneath. */
+const BLEND = 0.2
 
 /** Media query check that tolerates environments without matchMedia. */
 function matches(query: string) {
@@ -37,9 +60,15 @@ function startClips(stage: HTMLElement, a: HTMLVideoElement, b: HTMLVideoElement
   let back = b
   let idleLeft = 2
   let lastMove = ''
-  let switching = false
+  /** `play()` has been asked of the back element and has not settled yet. */
+  let handing = false
+  /** The front clip is done but the back one was not cued yet. */
+  let due = false
+  let watching = 0
+  let queued = 0
+  const frameTimed = typeof a.requestVideoFrameCallback === 'function'
 
-  const nextClip = () => {
+  const nextClip = (): Clip => {
     if (idleLeft > 0) {
       idleLeft -= 1
       return IDLE
@@ -50,45 +79,86 @@ function startClips(stage: HTMLElement, a: HTMLVideoElement, b: HTMLVideoElement
     idleLeft = 2 + Math.floor(Math.random() * 2)
     return move
   }
+  const clipOf = (video: HTMLVideoElement) => CLIPS[(video.dataset.clip ?? IDLE) as Clip] ?? CLIPS[IDLE]
 
-  const load = (video: HTMLVideoElement, clip: string) => {
+  const load = (video: HTMLVideoElement, clip: Clip) => {
+    video.dataset.clip = clip
+    delete video.dataset.cued
     video.src = MEDIA + clip
     video.load()
   }
+  const cued = (video: HTMLVideoElement) => 'cued' in video.dataset && !video.seeking && video.readyState >= 3
 
-  const swap = () => {
-    if (disposed || switching) return
-    switching = true
+  // Hand over to the back clip, cued on its first used frame: it fades in
+  // above while the outgoing clip plays its last frames and holds the pose.
+  const handOff = () => {
+    if (disposed || handing) return
+    if (!cued(back)) {
+      due = true
+      return
+    }
+    due = false
+    handing = true
     const incoming = back
-    incoming.currentTime = 0
+    const outgoing = front
     void incoming.play().then(() => {
+      handing = false
       if (disposed) return
       incoming.dataset.front = ''
-      delete front.dataset.front
-      back = front
+      delete outgoing.dataset.front
       front = incoming
-      switching = false
-      // Queue the following clip in the element that just went behind.
-      window.setTimeout(() => {
+      back = outgoing
+      watch(incoming)
+      // Queue the following clip once the outgoing element has faded out.
+      window.clearTimeout(queued)
+      queued = window.setTimeout(() => {
         if (disposed) return
-        back.pause()
-        load(back, nextClip())
-      }, CROSSFADE * 1000 + 80)
-    }, () => { switching = false })
+        outgoing.pause()
+        load(outgoing, nextClip())
+      }, BLEND * 2000 + 100)
+    }, () => {
+      handing = false
+    })
+  }
+  const reached = (video: HTMLVideoElement, time: number) => {
+    if (video === front && time * FPS + 0.01 >= clipOf(video).to - LEAD) handOff()
+  }
+  // Follow the front clip frame by frame as it is presented; `timeupdate`
+  // (a few times a second) is only the fallback.
+  const watch = (video: HTMLVideoElement) => {
+    if (!frameTimed) return
+    const token = ++watching
+    const step = (_now: number, frame: VideoFrameCallbackMetadata) => {
+      if (disposed || token !== watching) return
+      reached(video, frame.mediaTime)
+      video.requestVideoFrameCallback(step)
+    }
+    video.requestVideoFrameCallback(step)
   }
 
-  const onTime = (event: Event) => {
+  const onMeta = (event: Event) => {
     const video = event.currentTarget as HTMLVideoElement
-    if (video !== front || !Number.isFinite(video.duration)) return
-    if (video.duration - video.currentTime <= CROSSFADE && back.readyState >= 2) swap()
+    // The first clip starts playing at once from the poster frame; a queued
+    // clip waits on its first used frame.
+    if (video.paused) video.currentTime = (clipOf(video).from + 0.5) / FPS
+    else video.dataset.cued = ''
   }
-  // A clip that ran out before the next was ready holds its last frame (it
-  // matches the poster); the swap happens as soon as the next can play.
-  const onEnded = (event: Event) => {
-    if (event.currentTarget === front) swap()
+  const onSeeked = (event: Event) => {
+    const video = event.currentTarget as HTMLVideoElement
+    video.dataset.cued = ''
+    if (video === back && due) handOff()
   }
   const onReady = (event: Event) => {
-    if (event.currentTarget === back && front.ended) swap()
+    if (event.currentTarget === back && due) handOff()
+  }
+  const onTime = (event: Event) => {
+    const video = event.currentTarget as HTMLVideoElement
+    if (!frameTimed) reached(video, video.currentTime)
+  }
+  // A clip that ran out before the next was cued holds its last frame (it
+  // matches the poster); the hand-over happens as soon as the next is cued.
+  const onEnded = (event: Event) => {
+    if (event.currentTarget === front) handOff()
   }
   const onPlaying = () => {
     stage.dataset.playing = ''
@@ -96,15 +166,18 @@ function startClips(stage: HTMLElement, a: HTMLVideoElement, b: HTMLVideoElement
 
   for (const video of [a, b]) {
     video.muted = true
+    video.addEventListener('loadedmetadata', onMeta)
+    video.addEventListener('seeked', onSeeked)
+    video.addEventListener('canplay', onReady)
     video.addEventListener('timeupdate', onTime)
     video.addEventListener('ended', onEnded)
-    video.addEventListener('canplay', onReady)
     video.addEventListener('playing', onPlaying)
   }
 
   const seen = new IntersectionObserver(([entry]) => {
-    if (entry?.isIntersecting ?? true) void front.play().catch(() => {})
-    else front.pause()
+    if (!(entry?.isIntersecting ?? true)) front.pause()
+    else if (front.ended) handOff()
+    else void front.play().catch(() => {})
   })
   seen.observe(stage)
 
@@ -112,14 +185,18 @@ function startClips(stage: HTMLElement, a: HTMLVideoElement, b: HTMLVideoElement
   load(front, nextClip())
   load(back, nextClip())
   void front.play().catch(() => {})
+  watch(front)
 
   return () => {
     disposed = true
+    window.clearTimeout(queued)
     seen.disconnect()
     for (const video of [a, b]) {
+      video.removeEventListener('loadedmetadata', onMeta)
+      video.removeEventListener('seeked', onSeeked)
+      video.removeEventListener('canplay', onReady)
       video.removeEventListener('timeupdate', onTime)
       video.removeEventListener('ended', onEnded)
-      video.removeEventListener('canplay', onReady)
       video.removeEventListener('playing', onPlaying)
       video.pause()
       video.removeAttribute('src')
