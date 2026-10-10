@@ -11,9 +11,10 @@
   try{
     timing=await fetch('../media/intro.json').then(r=>{if(!r.ok)throw new Error('timeline missing');return r.json();});
     document.body.style.background='rgb('+timing.edge.map(v=>Math.round(v*255)).join(',')+')';
+    const config=await fetch('../config.json').then(r=>r.ok?r.json():{}).catch(()=>({}));
     await DeepSeekSplash.prepare();
     video.src='../media/intro.mp4';
-    await video.play();started=true;DeepSeekSplash.play(document,timing);if(loaded)DeepSeekSplash.loaded(document);post('playing');post('ready');
+    await video.play();started=true;DeepSeekSplash.play(document,timing,typeof config.name==='string'?config.name:'');if(loaded)DeepSeekSplash.loaded(document);post('playing');post('ready');
     video.addEventListener('timeupdate',()=>{if(loaded&&video.currentTime>=timing.mainEnd)leave();else if(video.currentTime>=timing.duration-.05)video.currentTime=timing.mainEnd;});
     video.addEventListener('ended',()=>{if(loaded)leave();else{video.currentTime=timing.mainEnd;video.play().catch(leave);}});
   }catch(error){console.warn('Entrance unavailable',error);leave();}

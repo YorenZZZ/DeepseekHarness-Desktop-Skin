@@ -3,7 +3,8 @@
 // intro.mp4), played natively by Sources/Splash.swift under this page; the
 // page only adds what changes from launch to launch:
 //   - the greeting, by the Mac's local time with a random line, typed onto
-//     the strip the video draws, at the time intro.json gives
+//     the strip the video draws, at the time intro.json gives; it names the
+//     user only when the install's config.json sets a name
 //   - the loader at the bottom left, which follows the app itself: "正在载入
 //     超算中心" decodes in letter by letter, flickering like an unsteady
 //     hologram, a status lamp blinking and a light running along a
@@ -14,8 +15,9 @@
 ;(function (root) {
   'use strict'
 
-  const NAME = 'Yoren'
   const LEAVE_MS = 450
+  // A configured name longer than this is cut, so the greeting fits its strip.
+  const NAME_MAX = 8
   // One is picked at random on every start; at most 16 characters each, so
   // the greeting fits its strip.
   const LINES = [
@@ -125,8 +127,9 @@
 `
   }
 
-  function splashMarkup({ title, line }, timing = TIMING) {
-    const greeting = escape(`${NAME}，${title}。${line}`)
+  function splashMarkup({ title, line }, timing = TIMING, name = '') {
+    const who = Array.from(String(name).trim()).slice(0, NAME_MAX).join('')
+    const greeting = escape(`${who ? `${who}，` : ''}${title}。${line}`)
     return `<style>${style(timing)}</style>
 <div id="scene">
 <div class="typing"><div class="counter">${svg(`<text x="112" y="499" ${FONT} font-size="17" font-weight="600" fill="#f4f8fc">${greeting}</text>`)}</div></div>
@@ -175,8 +178,8 @@
   }
 
   // Called by the app the moment the video starts.
-  function play(document, timing = TIMING) {
-    document.getElementById('stage').innerHTML = splashMarkup(introText(new Date()), timing)
+  function play(document, timing = TIMING, name = '') {
+    document.getElementById('stage').innerHTML = splashMarkup(introText(new Date()), timing, name)
     began = root.performance.now()
     fit(document)
     root.addEventListener('resize', () => fit(document))
@@ -211,7 +214,7 @@
     drawLoader(document)
   }
 
-  const api = { LEAVE_MS, LINES, NIGHT_LINES, TIMING, LOADING, READY, LOADER_AT, introText, loaderText, splashMarkup, prepare, play, loaded, leave, seek }
+  const api = { LEAVE_MS, NAME_MAX, LINES, NIGHT_LINES, TIMING, LOADING, READY, LOADER_AT, introText, loaderText, splashMarkup, prepare, play, loaded, leave, seek }
   if (typeof module === 'object' && module.exports) module.exports = api
   else root.DeepSeekSplash = api
 })(typeof window === 'undefined' ? globalThis : window)

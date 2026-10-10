@@ -18,7 +18,7 @@ export function rangeFor(header,size){
   if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=size||end<start)return null;
   return {start,end,status:206};
 }
-export function createHandler(report=()=>{}){
+export function createHandler(report=()=>{},configFile=join(root,'..','config.json')){
   return function handler(req,res){
     const url=new URL(req.url,'http://localhost');
     const name=url.pathname.slice(PREFIX.length);
@@ -27,6 +27,13 @@ export function createHandler(report=()=>{}){
       const event=url.searchParams.get('name');
       if(['client-ready','splash-playing','splash-dismissed','hero-mounted','hero-playing','hero-fallback','selector-unavailable'].includes(event))report(event);
       res.writeHead(204,{'cache-control':'no-store'});res.end();return;
+    }
+    if(name==='config.json'){
+      // Per-install settings beside the plugin folder (install.py --name), never repaired over.
+      let config={};
+      try{const value=JSON.parse(readFileSync(configFile,'utf8'));if(typeof value?.name==='string')config={name:value.name.slice(0,32)};}catch{}
+      const body=JSON.stringify(config);
+      res.writeHead(200,{'content-type':'application/json','content-length':Buffer.byteLength(body),'cache-control':'no-store'});res.end(req.method==='HEAD'?undefined:body);return;
     }
     if(!allowed.has(name)){res.writeHead(404);res.end();return;}
     const path=join(root,name);let size;
@@ -43,7 +50,7 @@ export function createHandler(report=()=>{}){
 }
 export const inject=['webServer'];
 export function apply(ctx){
-  const status={pluginVersion:'1.0.1',pid:process.pid,hostStartedAt:new Date().toISOString(),events:{}};
+  const status={pluginVersion:'1.1.0',pid:process.pid,hostStartedAt:new Date().toISOString(),events:{}};
   const record=event=>{
     if(event)status.events[event]=new Date().toISOString();
     try{writeFileSync(join(root,'..','health.json'),JSON.stringify(status,null,2)+'\n',{mode:0o600});}catch(error){console.warn('Animation health log unavailable:',error.message);}

@@ -1,7 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {stripTypeScriptTypes} from 'node:module';
 import {createHandler,rangeFor,apply} from '../plugin/index.mjs';
 
@@ -32,6 +34,26 @@ test('real media server returns exact bytes, MIME, Range and HEAD and rejects ot
   assert.equal((await fetch(base+'media/idle.mp4',{method:'POST'})).status,405);
   await fetch(base+'event?name=hero-playing');await fetch(base+'event?name=untrusted');assert.deepEqual(events,['hero-playing']);
  });
+});
+test('config route serves only the greeting name and tolerates a missing or broken file',async()=>{
+ const file=join(mkdtempSync(join(tmpdir(),'dsh-skin-')),'config.json');
+ await serve(createHandler(()=>{},file),async base=>{
+  const read=async()=>(await fetch(base+'config.json')).json();
+  assert.deepEqual(await read(),{});
+  writeFileSync(file,JSON.stringify({name:'Yoren',other:'not served'}));
+  assert.deepEqual(await read(),{name:'Yoren'});
+  writeFileSync(file,'{broken');
+  assert.deepEqual(await read(),{});
+ });
+});
+test('greeting names the user only when configured, escaped and cut to fit',async()=>{
+ await import('../plugin/splash/splash.js');
+ const splash=globalThis.DeepSeekSplash;
+ const greeting=name=>splash.splashMarkup({title:'早上好',line:'深海听令，随时出击！'},undefined,name).match(/fill="#f4f8fc">([^<]*)</)[1];
+ assert.equal(greeting(),'早上好。深海听令，随时出击！');
+ assert.equal(greeting('  '),'早上好。深海听令，随时出击！');
+ assert.equal(greeting('Yoren'),'Yoren，早上好。深海听令，随时出击！');
+ assert.equal(greeting('<b>一二三四五六七'),'&lt;b&gt;一二三四五，早上好。深海听令，随时出击！');
 });
 test('host registers compatible prefix route and nonblocking official boot injections',()=>{
  let route,callback;let disposed=false;

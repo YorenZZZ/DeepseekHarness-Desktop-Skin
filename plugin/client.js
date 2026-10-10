@@ -3,11 +3,11 @@
 /**
  * Full-bleed backdrop for the new-session page: the silver-sword knight
  * redrawn as a 3D render, alive through short generated clips that all start
- * and end on the same frame (the poster). She idles — breathing, hair, scarf
- * and whale tail in the wind, the palm sigil turning — and every couple of
- * loops plays one move: a narrowed, glowing glare, a turn of the sword as its
- * edge flares, or a surge of the sigil lifting her hair and scarf (the files
- * keep their first names: wink, lean, toss). Two video elements double-buffer;
+ * and end on the same frame (the poster), played in random order, never the
+ * same clip twice in a row: idling — breathing, hair, scarf and whale tail in
+ * the wind, the palm sigil turning — a narrowed, glowing glare, a turn of the
+ * sword as its edge flares, or a surge of the sigil lifting her hair and scarf
+ * (the files keep their first names: wink, lean, toss). Two video elements double-buffer;
  * the next clip waits cued on its first used frame and takes over, timed to
  * the presented frame, just as the current one reaches its last, with a brief
  * blend over the matching pose. The clips
@@ -38,7 +38,7 @@ const CLIPS = {
 }         
                               
 const IDLE       = 'idle.mp4'
-const MOVES                  = ['wink.mp4', 'lean.mp4', 'toss.mp4']
+const ALL = Object.keys(CLIPS)          
 /** Frames before a clip's last used frame when the next one is started, to
  * cover the time `play()` takes to get going. */
 const LEAD = 2
@@ -52,15 +52,13 @@ function matches(query        ) {
 }
 
 /**
- * Drive the two video elements until disposed: idle 2–3 loops, then one
- * move (never the same twice in a row), then idle again.
+ * Drive the two video elements until disposed, each next clip picked at
+ * random from the ones other than the clip playing.
  */
 function startClips(stage             , a                  , b                  ) {
   let disposed = false
   let front = a
   let back = b
-  let idleLeft = 2
-  let lastMove = ''
   /** `play()` has been asked of the back element and has not settled yet. */
   let handing = false
   /** The front clip is done but the back one was not cued yet. */
@@ -69,18 +67,12 @@ function startClips(stage             , a                  , b                  
   let queued = 0
   const frameTimed = typeof a.requestVideoFrameCallback === 'function'
 
-  const nextClip = ()       => {
-    if (idleLeft > 0) {
-      idleLeft -= 1
-      return IDLE
-    }
-    const choices = MOVES.filter(move => move !== lastMove)
-    const move = choices[Math.floor(Math.random() * choices.length)] ?? MOVES[0] ?? IDLE
-    lastMove = move
-    idleLeft = 2 + Math.floor(Math.random() * 2)
-    return move
+  const nameOf = (video                  ) => (video.dataset.clip ?? IDLE)        
+  const clipOf = (video                  ) => CLIPS[nameOf(video)] ?? CLIPS[IDLE]
+  const nextClip = (playing       )       => {
+    const choices = ALL.filter(clip => clip !== playing)
+    return choices[Math.floor(Math.random() * choices.length)] ?? IDLE
   }
-  const clipOf = (video                  ) => CLIPS[(video.dataset.clip ?? IDLE)        ] ?? CLIPS[IDLE]
 
   const load = (video                  , clip      ) => {
     video.dataset.clip = clip
@@ -115,7 +107,7 @@ function startClips(stage             , a                  , b                  
       queued = window.setTimeout(() => {
         if (disposed) return
         outgoing.pause()
-        load(outgoing, nextClip())
+        load(outgoing, nextClip(nameOf(incoming)))
       }, BLEND * 2000 + 100)
     }, () => {
       handing = false
@@ -183,8 +175,9 @@ function startClips(stage             , a                  , b                  
   seen.observe(stage)
 
   front.dataset.front = ''
-  load(front, nextClip())
-  load(back, nextClip())
+  const first = nextClip()
+  load(front, first)
+  load(back, nextClip(first))
   void front.play().catch(() => {})
   watch(front)
 
@@ -527,7 +520,7 @@ if(!matches('(prefers-reduced-motion: reduce)')){
 }
 sync();telemetry('client-ready');
 const compatibilityTimer=setTimeout(()=>{if(!heroSeen&&!document.querySelector('[data-conversation-content]'))telemetry('selector-unavailable');},30000);
-window.__YOREN_ANIMATIONS__={version:'1.0.1',get mounted(){return mounted.size;},dispose(){
+window.__YOREN_ANIMATIONS__={version:'1.1.0',get mounted(){return mounted.size;},dispose(){
   removeSplash();disposed=true;clearTimeout(compatibilityTimer);observer.disconnect();
   window.removeEventListener('message',receive);window.removeEventListener('keydown',key);
   for(const stop of mounted.values())stop();mounted.clear();
