@@ -2,7 +2,25 @@
 
 非官方的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 桌面版皮肤：启动时的入场动画，加上新会话首页的动态骑士背景。它以外部插件的形式加载，不修改、不重新签名官方 App，官方自动更新照常进行。
 
-![首页骑士背景](docs/preview.jpg)
+## 预览
+
+入场动画（共 18 秒，动图分两段，截取前 15.5 秒；问候语和载入状态是叠加在画面上的文字，未包含在动图里）：
+
+![入场动画 · 上](docs/intro-a.gif)
+
+![入场动画 · 下](docs/intro-b.gif)
+
+首页骑士的四段动作，随机循环播放、段与段之间按帧衔接：
+
+| 待机 | 睥睨抬眸 |
+| --- | --- |
+| ![待机](docs/hero-idle.gif) | ![睥睨抬眸](docs/hero-wink.gif) |
+
+| 剑锋微转 | 魔力涌动 |
+| --- | --- |
+| ![剑锋微转](docs/hero-lean.gif) | ![魔力涌动](docs/hero-toss.gif) |
+
+> 静态海报：[docs/preview.jpg](docs/preview.jpg)
 
 ## 效果
 
